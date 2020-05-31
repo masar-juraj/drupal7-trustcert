@@ -1,0 +1,51 @@
+<?php
+
+function trustcert_enable() {
+	$tc_list = db_select('trustcert','t')
+		->fields('t')
+		->execute();
+	if($tc_list->rowCount() == 0) {
+		$hosts = array(
+			'localhost','127.0.0.1'
+		);
+		foreach($hosts as $host) {
+			db_insert('trustcert')
+				->fields(array('host' => $host))
+				->execute();
+		}
+	}
+	drupal_set_message(t('Trustcert module has been enabled.'));
+}
+
+function trustcert_disable() {
+	drupal_set_message(t('Trustcert module has been disabled.'));
+}
+
+function trustcert_schema() {
+	$schema['trustcert'] = array(
+		'description' => 'List of hosts for which untrusted certificates are accepted.',
+		'fields' => array(
+			'id' => array(
+				'description' => 'Primary key.',
+				'type' => 'serial',
+				'not null' => TRUE,
+			),
+			'host' => array(
+				'description' => 'Hostname or IP address.',
+				'type' => 'varchar',
+				'length' => '64',
+				'not null' => TRUE,
+			),
+		),
+		'primary key' => array('id'),
+		'unique keys' => array('host' => array('host'))
+	);
+	return $schema;
+}
+
+function trustcert_update_7100() {
+	$rid = variable_get('user_admin_role');
+	if($rid) {
+		user_role_grant_permissions($rid,'administer trustssl');
+	}
+}

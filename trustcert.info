@@ -1,0 +1,8 @@
+name = Trustcert
+description = Module, which allows Drupal to open the SSL connection to remote hosts that have untrusted certificates.
+version = 7.x-1.0
+core = 7.x
+package = Core
+configure = admin/config/system/trustcert
+
+project = "drupal"

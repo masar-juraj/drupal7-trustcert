@@ -1,0 +1,143 @@
+<?php
+
+define('TRUSTCERT_DEBUG',false);
+define('TRUSTCERT_ADMIN_URI','admin/config/system/trustcert');
+
+function trustcert_help($path, $arg) {
+	$help = '';
+	switch ($path) {
+		case 'admin/help#trustcert':
+			$help .= '<h3>' . t('About') . '</h3>';
+			$help .=
+				'<p>' .
+				t('Module, which allows Drupal to open the SSL connection to ' .
+				'remote hosts that have untrusted certificates.') .
+				'</p>';
+			$help .= '<h3>' . t('Description') . '</h3>';
+			$help .=
+				'<p>' .
+				t('This module overrides default function "drupal_http_request_function" ' .
+				'and sets the SSL context options for a specified list of host and then ' .
+				'it turn calls this function again with these options. The SSL context ' .
+				'options are set to the following.') .
+				'</p>';
+			$help .=
+				'<ul>' .
+				'<li>verify_peer_name = false</li>' .
+				'<li>verify_peer = false</li>' .
+				'<li>allow_self_signed = true</li>' .
+				'</ul>';
+			$help .= '<h3>' . t('Background') . '</h3>';
+			$help .=
+				'<p>' .
+				t('If you run Drupal website on HTTPS protocol, you can encounter ' .
+				'on status report page in administration section with ' .
+				'"drupal_http_request_fail" problem. If your server connectivity ' .
+				'to Internet is working well the problem may be in SSL.') .
+				'</p>';
+			$help .=
+				'<p>' .
+				t('Drupal acts in fact as the web client and test the network ' .
+				'connection to itself by calling its pages. The core of this problem' .
+				'is the verification of server (peer) SSL certificate, which is on ' .
+				'PHP 5.6 in openssl built-in enabled by default. If the server address ' .
+				'is different from the common name field of its certificate or its ' .
+				'certificate is self-signed, the server is considered as untrusted' .
+				'and the connection to it is closed.') .
+				'</p>';
+	}
+	return $help;
+}
+
+function trustcert_menu() {
+	$items = array();
+	$items['admin/config/system/trustcert'] = array(
+		'title' => 'Trustcert',
+		'description' => "Trustcert list",
+		'page callback' => 'trustcert_admin_list',
+		'access arguments' => array('administer trustssl'),
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'trustcert.admin.inc',
+	);
+	$items['admin/config/system/trustcert/add'] = array(
+		'title' => 'Trustcert add host',
+		'description' => "Trustcert add host",
+		'page callback' => 'trustcert_admin_add',
+		'access arguments' => array('administer trustssl'),
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'trustcert.admin.inc',
+	);
+	$items['admin/config/system/trustcert/delete'] = array(
+		'title' => 'Delete host',
+		'description' => "Trustcert delete host",
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('trustcert_admin_delete',5),
+		'access arguments' => array('administer trustssl'),
+		'type' => MENU_CALLBACK,
+		'file' => 'trustcert.admin.inc',
+	);
+	return $items;
+}
+
+function trustcert_init() {
+	global $conf;
+	$conf['drupal_http_request_function'] = 'trustcert_drupal_http_request';
+}
+
+function trustcert_permission() {
+	return array(
+		'administer trustssl' => array(
+			'title' => t('Administer hosts'),
+			'restrict access' => TRUE,
+		)
+	);
+}
+
+function trustcert_drupal_http_request($url, array $options = array()) {
+	global $conf;
+	$result = new stdClass();
+
+	$uri = @parse_url($url);
+	if ($uri == false) {
+		$result->error = 'unable to parse URL';
+		$result->code = -1001;
+		return $result;
+	}
+	if (!isset($uri['scheme'])) {
+		$result->error = 'missing schema';
+		$result->code = -1002;
+		return $result;
+	}
+
+	$tc_list = array();
+	$tc_list = db_select('trustcert','t')
+		->fields('t',array('host'))
+		->execute()
+		->fetchCol();
+
+	$args = func_get_args();
+
+	if(TRUSTCERT_DEBUG) {
+		var_dump($uri);
+	}
+	if($uri['scheme'] == 'https') {
+		if(in_array(strtolower($uri['host']),$tc_list) == true) {
+			$context = array(
+				'ssl' => array(
+					'verify_peer_name' => false,
+					'verify_peer' => false,
+					'allow_self_signed' => true,
+				)
+			);
+			$context = stream_context_create($context);
+			$args[1]['context'] = $context;
+		}
+	}
+
+	$backup = $conf['drupal_http_request_function'];
+	$conf['drupal_http_request_function'] = false;
+	$result = call_user_func_array('drupal_http_request',$args);
+	$conf['drupal_http_request_function'] = $backup;
+
+	return $result;
+}
