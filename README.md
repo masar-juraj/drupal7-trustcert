@@ -1,7 +1,7 @@
 # Drupal 7.x Trustcert module
 Module, which allows Drupal to open the SSL connection to remote hosts that have untrusted certificates.
 ## Description
-This module overrides default function "drupal_http_request_function" and sets the SSL context options for a specified list of host and then it calls in turn this function with these options again. The SSL context options are set to the following.
+This module overrides default function "drupal_http_request_function" and sets the SSL context options for a specified list of hosts and then it calls in turn this function with these options again. The SSL context options are set to the following.
 * verify_peer_name = false
 * verify_peer = false
 * allow_self_signed = true
