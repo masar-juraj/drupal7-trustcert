@@ -17,8 +17,8 @@ function trustcert_help($path, $arg) {
 			$help .=
 				'<p>' .
 				t('This module overrides default function "drupal_http_request_function" ' .
-				'and sets the SSL context options for a specified list of host and then ' .
-				'it turn calls this function again with these options. The SSL context ' .
+				'and sets the SSL context options for a specified list of hosts and then ' .
+				'it calls in turn this function with these options again. The SSL context ' .
 				'options are set to the following.') .
 				'</p>';
 			$help .=
